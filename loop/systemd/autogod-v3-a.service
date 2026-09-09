@@ -1,12 +1,15 @@
-# autogod-v3-a.service — one goal-loop iteration on lane a (loop/pass.sh).
+# autogod-v3-a.service — the goal-loop, lane a (loop/pass.sh). Persistent:
+# pass.sh itself loops iteration after iteration with no gap, so this is a
+# long-running service, not a periodic job. There is no timer — "auto" mode
+# on AUTOGOD 1 just means this service is started.
 # A SYSTEM unit (User=jack) so the fleet layout daemon can start/stop it with
-# the rest of the rack: "auto" mode on AUTOGOD 1 = this lane's timer running.
+# the rest of the rack.
 [Unit]
-Description=AUTOGOD v3 goal loop — one iteration, lane a
+Description=AUTOGOD v3 goal loop, lane a
 After=network.target
 
 [Service]
-Type=oneshot
+Type=simple
 User=jack
 Environment=HOME=/home/jack
 Environment=AUTOGOD_LANE=a
@@ -16,3 +19,5 @@ Environment=AUTOGOD_LAB=/home/jack/lab
 Environment=PYTHONUNBUFFERED=1
 WorkingDirectory=/home/jack/autogod-v3
 ExecStart=/home/jack/autogod-v3/loop/pass.sh
+Restart=always
+RestartSec=5

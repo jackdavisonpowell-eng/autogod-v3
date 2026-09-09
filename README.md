@@ -15,7 +15,7 @@ GOAL ──▶ idea ──▶ plan ──▶ prototype ──▶ polish ──�
 - `loop/prompts/*.md` — one prompt per stage; every one ends with the same hand-back contract
 - `loop/drivers/claude_code.py` — one headless `claude -p` session with a wall-clock budget
 - `hooks/guard.py` — the PreToolUse fence (write roots, no sudo/systemctl/push/ssh)
-- `loop/pass.sh` — brain health check → lane lock → one iteration; `loop/systemd/` runs it every 15 min
+- `loop/pass.sh` — the lane loop: brain + proxy health → one iteration → next, as a persistent system service (`loop/systemd/`); the rack daemon starts it in auto mode, stops it in chat
 
 Two lanes (`a` = the V100 brain, `b` = the P100 pair) run independent projects; the idea
 prompt sees every project under the goal and the pass refuses a category already live on
