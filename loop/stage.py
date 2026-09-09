@@ -192,6 +192,9 @@ class Pass:
     def iter_idea(self, goal_slug, goal, retry_note=""):
         scratch = os.path.join(STATE_DIR, "idea", self.lane)
         if os.path.isdir(scratch):
+            old = os.path.join(scratch, "idea.log")
+            if os.path.exists(old):   # keep the last attempt's log for post-mortems
+                shutil.copy(old, os.path.join(STATE_DIR, "idea", "%s-last.log" % self.lane))
             shutil.rmtree(scratch)
         os.makedirs(scratch)
         handback = os.path.join(scratch, "idea.md")
