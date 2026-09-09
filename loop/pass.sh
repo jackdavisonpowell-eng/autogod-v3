@@ -17,7 +17,8 @@ if ! curl -s -m 5 "$AUTOGOD_BRAIN_URL/health" | grep -q '"ok"'; then
     echo "$(ts) [$AUTOGOD_LANE] brain $AUTOGOD_BRAIN_URL not up — skip" >> "$LOG"
     exit 0
 fi
-if ! curl -s -m 5 -o /dev/null -w '%{http_code}' "$ANTHROPIC_BASE_URL/v1/messages" | grep -qE '^(4|2)'; then
+# the adapter proxy only speaks POST; any HTTP status at all means it is listening
+if ! curl -s -m 5 -o /dev/null -w '%{http_code}' "$ANTHROPIC_BASE_URL/v1/messages" | grep -qE '^[1-5][0-9][0-9]$'; then
     echo "$(ts) [$AUTOGOD_LANE] proxy $ANTHROPIC_BASE_URL not up — skip" >> "$LOG"
     exit 0
 fi
