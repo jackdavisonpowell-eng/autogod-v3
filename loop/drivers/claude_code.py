@@ -84,48 +84,112 @@ def _supports_max_turns(env):
     return _MAX_TURNS_SUPPORTED
 
 
+def _stream_line(obj, out):
+    """One stream-json event -> readable lines for the live log (the wall's MINDS pane)."""
+    t = obj.get("type")
+    if t == "assistant":
+        for c in (obj.get("message") or {}).get("content") or []:
+            if c.get("type") == "text" and c.get("text", "").strip():
+                out.write(c["text"].rstrip() + "\n")
+            elif c.get("type") == "tool_use":
+                inp = c.get("input") or {}
+                arg = inp.get("command") or inp.get("file_path") or inp.get("pattern") or inp.get("query") or ""
+                out.write("> %s %s\n" % (c.get("name", "tool"), str(arg)[:200]))
+    elif t == "user":
+        for c in (obj.get("message") or {}).get("content") or []:
+            if c.get("type") == "tool_result":
+                body = c.get("content")
+                if isinstance(body, list):
+                    body = " ".join(x.get("text", "") for x in body if isinstance(x, dict))
+                body = str(body or "").strip()
+                if body:
+                    out.write("  " + body[:300].replace("\n", "\n  ") + "\n")
+    elif t == "result":
+        out.write("[result] %s turns=%s error=%s\n" % (obj.get("subtype"), obj.get("num_turns"), obj.get("is_error")))
+    out.flush()
+
+
 def run(prompt, cwd, tools, budget_secs, max_turns=40, env_extra=None):
     env = load_env(env_extra)
     root = env.get("AUTOGOD_ROOT", os.path.realpath(os.path.join(_HERE, "..", "..")))
     os.makedirs(cwd, exist_ok=True)
     ensure_hook(cwd, root)
 
-    cmd = [CLAUDE_BIN, "-p", "--output-format", "json", "--allowedTools", tools]
+    cmd = [CLAUDE_BIN, "-p", "--output-format", "stream-json", "--verbose", "--allowedTools", tools]
     if _supports_max_turns(env):
         cmd += ["--max-turns", str(max_turns)]
+
+    log_path = env.get("AUTOGOD_ITER_LOG")
+    log = open(log_path, "w", encoding="utf-8") if log_path else open(os.devnull, "w")
+    log.write("$ %s\n[cwd %s] [budget %ds]\n\n" % (" ".join(cmd), cwd, budget_secs))
+    log.flush()
 
     t0 = time.time()
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, text=True, env=env, cwd=cwd)
+    try:
+        proc.stdin.write(prompt)
+        proc.stdin.close()
+    except (BrokenPipeError, OSError):
+        pass
+
+    result = {}
     killed = False
+    # stdout is read line by line as the session runs; the budget is enforced
+    # by wall clock on the reading loop, not by communicate().
+    import selectors
+    sel = selectors.DefaultSelector()
+    sel.register(proc.stdout, selectors.EVENT_READ)
+    buf = ""
+    while True:
+        left = budget_secs - (time.time() - t0)
+        if left <= 0:
+            killed = True
+            proc.kill()
+            break
+        if not sel.select(timeout=min(left, 5)):
+            if proc.poll() is not None:
+                break
+            continue
+        chunk = proc.stdout.readline()
+        if not chunk:
+            break
+        buf += chunk
+        if not chunk.endswith("\n"):
+            continue
+        line, buf = buf, ""
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            log.write(line)
+            continue
+        if obj.get("type") == "result":
+            result = obj
+        try:
+            _stream_line(obj, log)
+        except Exception:
+            pass
+    try:
+        proc.wait(timeout=15)
+    except subprocess.TimeoutExpired:
+        proc.kill()
     stderr = ""
     try:
-        stdout, stderr = proc.communicate(input=prompt, timeout=budget_secs)
-    except subprocess.TimeoutExpired:
-        killed = True
-        proc.kill()
-        try:
-            stdout, stderr = proc.communicate(timeout=15)
-        except Exception:
-            stdout = ""
+        stderr = proc.stderr.read() or ""
+    except Exception:
+        pass
     seconds = time.time() - t0
-    obj = _parse_result_json(stdout)
-    log = env.get("AUTOGOD_ITER_LOG")
-    if log:
-        try:
-            with open(log, "w") as f:
-                f.write("$ %s\n[cwd %s] [%.0fs]%s\n\n" % (" ".join(cmd), cwd, seconds,
-                                                           " KILLED (budget)" if killed else ""))
-                f.write((stdout or "")[-20000:])
-                if stderr:
-                    f.write("\n--- stderr ---\n" + stderr[-4000:])
-        except OSError:
-            pass
+    if killed:
+        log.write("\n[KILLED: budget %ds]\n" % budget_secs)
+    if stderr.strip():
+        log.write("\n--- stderr ---\n" + stderr[-4000:])
+    log.write("\n[%.0fs]\n" % seconds)
+    log.close()
     return {
-        "session_id": obj.get("session_id"),
+        "session_id": result.get("session_id"),
         "exit_code": -9 if killed else (proc.returncode if proc.returncode is not None else -1),
-        "num_turns": obj.get("num_turns", 0),
-        "is_error": True if killed else bool(obj.get("is_error", proc.returncode != 0)),
+        "num_turns": result.get("num_turns", 0),
+        "is_error": True if killed else bool(result.get("is_error", proc.returncode != 0)),
         "seconds": seconds,
-        "result": obj.get("result", ""),
+        "result": result.get("result", ""),
     }

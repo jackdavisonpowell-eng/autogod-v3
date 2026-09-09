@@ -5,7 +5,7 @@
 
 export AUTOGOD_LANE="${AUTOGOD_LANE:-a}"
 
-# Lane a = AUTOGOD 1 (autogod-brain.service :11466, the V100 under `deep work`)
+# Lane a = AUTOGOD 1 (autogod-brain.service :11466 — the P100 pair under `default`, the V100 under `deep work`)
 #          behind the adapter proxy :11499.
 # Lane b = AUTOGOD 2 (autogod-brain-2.service :11467, the P100 pair)
 #          behind the adapter proxy :11498.

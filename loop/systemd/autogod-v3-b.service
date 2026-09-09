@@ -1,12 +1,18 @@
-# autogod-v3-b.service — one goal-loop iteration on lane b (see loop/pass.sh).
+# autogod-v3-b.service — one goal-loop iteration on lane b (loop/pass.sh).
+# A SYSTEM unit (User=jack) so the fleet layout daemon can start/stop it with
+# the rest of the rack: "auto" mode on AUTOGOD 2 = this lane's timer running.
 [Unit]
 Description=AUTOGOD v3 goal loop — one iteration, lane b
 After=network.target
 
 [Service]
 Type=oneshot
+User=jack
+Environment=HOME=/home/jack
 Environment=AUTOGOD_LANE=b
-Environment=VAULT=%h/vault
-Environment=AUTOGOD_ROOT=%h/autogod-v3
-Environment=AUTOGOD_LAB=%h/lab
-ExecStart=%h/autogod-v3/loop/pass.sh
+Environment=VAULT=/data/vault
+Environment=AUTOGOD_ROOT=/home/jack/autogod-v3
+Environment=AUTOGOD_LAB=/home/jack/lab
+Environment=PYTHONUNBUFFERED=1
+WorkingDirectory=/home/jack/autogod-v3
+ExecStart=/home/jack/autogod-v3/loop/pass.sh

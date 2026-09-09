@@ -171,3 +171,34 @@ class T(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TVerdict(T):
+    def test_kill_and_keep(self):
+        import verdict
+        verdict.STATE_DIR = stage.STATE_DIR
+        p, drv = self.make({
+            "idea": (IDEA, {}), "plan": ("x\n", {"vault:PLAN.md": PLAN}),
+            "prototype": (PROTO_OK, {}), "polish": (POLISH, {}),
+        })
+        self.assertTrue(verdict.apply(self.st, "pulse-grid", "kill").startswith("no such"))
+        p.run(); p.run()
+        self.assertIn("not showcased", verdict.apply(self.st, "pulse-grid", "kill"))
+        p.run(); p.run()
+        self.assertEqual(verdict.apply(self.st, "pulse-grid", "kill", "boring"), "ok")
+        m = self.st.read_project("pulse-grid")
+        self.assertEqual((m["verdict"], m["stage"]), ("kill", "verdict"))
+        self.assertIn("a grid that pulses", self.st.dead_lines())
+        self.assertIn("not this: a grid that pulses", self.st.active_goal()[1])
+        self.assertEqual(self.st.read_card("pulse-grid")["verdict"], "kill")
+        # the next idea prompt carries the kill
+        drv.script["idea"] = (IDEA.replace("pulse-grid", "tide-clock").replace("visualizer", "timer"), {})
+        p.run()
+        idea_prompt = [c[1] for c in drv.calls if c[0] == "idea"][-1]
+        self.assertIn("boring", idea_prompt)
+        self.assertIn("pulse-grid [visualizer] (kill)", idea_prompt)
+        # keep leaves a marker for the repo step
+        for _ in range(3):
+            p.run()
+        self.assertEqual(verdict.apply(self.st, "tide-clock", "keep"), "ok")
+        self.assertTrue(os.path.exists(os.path.join(stage.STATE_DIR, "keep", "tide-clock")))

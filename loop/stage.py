@@ -174,7 +174,18 @@ class Pass:
             print(prompt)
             return {"is_error": False, "seconds": 0}
         os.makedirs(os.path.dirname(handback), exist_ok=True)
-        return self.driver.run(prompt, cwd, TOOLS[stage], budget(stage), TURNS[stage], env)
+        cur = os.path.join(STATE_DIR, "current-%s.json" % self.lane)
+        with open(cur, "w") as f:
+            json.dump({"lane": self.lane, "stage": stage, "slug": slug or None,
+                       "started": time.time(), "budget": budget(stage),
+                       "log": env["AUTOGOD_ITER_LOG"], "cwd": cwd}, f)
+        try:
+            return self.driver.run(prompt, cwd, TOOLS[stage], budget(stage), TURNS[stage], env)
+        finally:
+            try:
+                os.remove(cur)
+            except OSError:
+                pass
 
     # -- idea ----------------------------------------------------------------
     def iter_idea(self, goal_slug, goal, retry_note=""):
