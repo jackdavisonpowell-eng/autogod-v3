@@ -118,6 +118,11 @@ def run(prompt, cwd, tools, budget_secs, max_turns=40, env_extra=None):
     ensure_hook(cwd, root)
 
     cmd = [CLAUDE_BIN, "-p", "--output-format", "stream-json", "--verbose", "--allowedTools", tools]
+    # Claude Code's own sandbox only lets Bash touch cwd; the project's vault folder
+    # (PLAN.md, hand-backs) must be added or `wc -l PLAN.md` gets refused.
+    for root in (env.get("AUTOGOD_ALLOWED_ROOTS") or "").split(":"):
+        if root and os.path.realpath(root) != os.path.realpath(cwd):
+            cmd += ["--add-dir", root]
     if _supports_max_turns(env):
         cmd += ["--max-turns", str(max_turns)]
 
