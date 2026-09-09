@@ -31,10 +31,11 @@ PROMPTS = os.path.join(HERE, "prompts")
 BUDGET = {"idea": 1800, "plan": 2700, "prototype": 5400, "polish": 2700}
 TURNS = {"idea": 15, "plan": 25, "prototype": 60, "polish": 40}
 TOOLS = {
-    "idea": "Read,Grep,Glob,WebSearch,Write",
-    "plan": "Read,Grep,Glob,WebSearch,Write",
-    "prototype": "Read,Write,Edit,Bash,Grep,Glob,WebSearch",
-    "polish": "Read,Write,Edit,Bash,Grep,Glob,WebSearch",
+    # no WebSearch: it is a server-side tool, nothing executes it against a local brain
+    "idea": "Read,Grep,Glob,Write",
+    "plan": "Read,Grep,Glob,Write",
+    "prototype": "Read,Write,Edit,Bash,Grep,Glob",
+    "polish": "Read,Write,Edit,Bash,Grep,Glob",
 }
 RETRIES = {"idea": 1, "plan": 1, "prototype": 2, "polish": 2}
 NEXT = {"plan": "prototype", "prototype": "polish", "polish": "showcase"}

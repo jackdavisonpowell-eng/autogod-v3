@@ -30,7 +30,7 @@ left to make:
    RUNS: yes, and the exact command + expected output that proves it.
 
 Keep PLAN.md under 120 lines. No features past the one thing. You may read {{code_dir}}
-(it is empty or has only CLAUDE.md) and run at most two WebSearch calls for an API or a formula.
+(it is empty or has only CLAUDE.md). There is no web tool; use formulas and APIs you already know.
 
 Then write the hand-back file {{handback_path}} with this shape:
 

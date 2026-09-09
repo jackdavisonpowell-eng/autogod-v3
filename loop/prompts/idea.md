@@ -18,7 +18,7 @@ plus at most a tiny python3 stdlib server). It can be built and running in one l
 by a 27B model. It has one clear thing it does, done sharply. Not a landing page, not a
 type-a-word toy, not coursework, not a chatbot.
 
-You may run at most two WebSearch calls to check the idea is not a solved, well-known app.
+Do not search the web; you have no web tool. Decide from what you know.
 
 Write your answer as the file {{handback_path}} with EXACTLY this shape and nothing else:
 
