@@ -1,0 +1,12 @@
+# autogod-v3-b.service — one goal-loop iteration on lane b (see loop/pass.sh).
+[Unit]
+Description=AUTOGOD v3 goal loop — one iteration, lane b
+After=network.target
+
+[Service]
+Type=oneshot
+Environment=AUTOGOD_LANE=b
+Environment=VAULT=%h/vault
+Environment=AUTOGOD_ROOT=%h/autogod-v3
+Environment=AUTOGOD_LAB=%h/lab
+ExecStart=%h/autogod-v3/loop/pass.sh

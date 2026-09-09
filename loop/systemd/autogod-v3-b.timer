@@ -1,0 +1,13 @@
+# Fires every 15 min; systemd will not start a oneshot that is still running,
+# and pass.sh skips when the lane's brain is down, so this is effectively
+# "run back to back whenever AUTOGOD b is racked".
+[Unit]
+Description=AUTOGOD v3 goal loop timer, lane b
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=false
+Unit=autogod-v3-b.service
+
+[Install]
+WantedBy=timers.target
