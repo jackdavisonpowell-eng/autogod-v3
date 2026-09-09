@@ -28,7 +28,7 @@ ROOT = os.path.realpath(os.environ.get("AUTOGOD_ROOT", os.path.join(HERE, ".."))
 STATE_DIR = os.environ.get("AUTOGOD_STATE_DIR", os.path.join(ROOT, "state"))
 PROMPTS = os.path.join(HERE, "prompts")
 
-BUDGET = {"idea": 1200, "plan": 2700, "prototype": 5400, "polish": 2700}
+BUDGET = {"idea": 1800, "plan": 2700, "prototype": 5400, "polish": 2700}
 TURNS = {"idea": 15, "plan": 25, "prototype": 60, "polish": 40}
 TOOLS = {
     "idea": "Read,Grep,Glob,WebSearch,Write",

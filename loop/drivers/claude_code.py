@@ -91,6 +91,8 @@ def _stream_line(obj, out):
         for c in (obj.get("message") or {}).get("content") or []:
             if c.get("type") == "text" and c.get("text", "").strip():
                 out.write(c["text"].rstrip() + "\n")
+            elif c.get("type") == "thinking" and c.get("thinking"):
+                out.write("(thinking, %d chars)\n" % len(c["thinking"]))
             elif c.get("type") == "tool_use":
                 inp = c.get("input") or {}
                 arg = inp.get("command") or inp.get("file_path") or inp.get("pattern") or inp.get("query") or ""
