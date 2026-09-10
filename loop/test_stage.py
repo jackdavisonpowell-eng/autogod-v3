@@ -31,8 +31,9 @@ class FakeDriver:
         text, files = entry
         hb = env_extra["AUTOGOD_HANDBACK_PATH"]
         os.makedirs(os.path.dirname(hb), exist_ok=True)
-        with open(hb, "w") as f:
-            f.write(text)
+        if text is not None:   # None = the model died before writing the hand-back
+            with open(hb, "w") as f:
+                f.write(text)
         for rel, content in (files or {}).items():
             base = env_extra["AUTOGOD_PROJECT_DIR"] if rel.startswith("vault:") else cwd
             p = os.path.join(base, rel.replace("vault:", ""))
@@ -130,6 +131,12 @@ class T(unittest.TestCase):
         p.run()
         self.assertEqual(p.run(), "plan failed (no hand-back), retry 1")
         self.assertTrue(p.run().endswith("-> stuck"))
+
+    def test_plan_md_alone_counts_as_plan_handback(self):
+        # the model wrote a good PLAN.md and died at the budget before the hand-back file
+        p, _ = self.make({"idea": (IDEA, {}), "plan": (None, {"vault:PLAN.md": PLAN})})
+        p.run()
+        self.assertEqual(p.run(), "plan ok -> prototype")
 
     def test_category_clash_reruns_idea_once(self):
         p, drv = self.make({"idea": (IDEA, {})})

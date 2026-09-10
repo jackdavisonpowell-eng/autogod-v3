@@ -111,6 +111,8 @@ def _stream_line(obj, out):
     out.flush()
 
 
+DISALLOW_UNLESS_ALLOWED = ("Bash", "Edit", "MultiEdit", "NotebookEdit", "WebSearch", "WebFetch")
+
 def run(prompt, cwd, tools, budget_secs, max_turns=40, env_extra=None):
     env = load_env(env_extra)
     root = env.get("AUTOGOD_ROOT", os.path.realpath(os.path.join(_HERE, "..", "..")))
@@ -118,6 +120,12 @@ def run(prompt, cwd, tools, budget_secs, max_turns=40, env_extra=None):
     ensure_hook(cwd, root)
 
     cmd = [CLAUDE_BIN, "-p", "--output-format", "stream-json", "--verbose", "--allowedTools", tools]
+    # A tool that is merely not allowed still exists: the 27B calls Bash in the plan stage,
+    # gets "requires approval" (nobody is there), and retries until the budget kills it
+    # (7 plan passes on 2026-09-09). Disallow it so it is not offered at all.
+    disallowed = [t for t in DISALLOW_UNLESS_ALLOWED if t not in tools.split(",")]
+    if disallowed:
+        cmd += ["--disallowedTools", ",".join(disallowed)]
     # Claude Code's own sandbox only lets Bash touch cwd; the project's vault folder
     # (PLAN.md, hand-backs) must be added or `wc -l PLAN.md` gets refused.
     for root in (env.get("AUTOGOD_ALLOWED_ROOTS") or "").split(":"):

@@ -284,15 +284,17 @@ class Pass:
         return "%s failed (%s), retry %d" % (stage, why, proj["retries"])
 
     def check(self, stage, proj, text):
-        if not text.strip():
-            return False, "no hand-back"
         if stage == "plan":
+            # The plan IS the deliverable. 2026-09-09: five plan passes wrote a good PLAN.md
+            # and then died at the budget before the hand-back file — judge the plan itself.
             plan = self.st.read_text(os.path.join(self.st.project_dir(proj["slug"]), "PLAN.md"))
             if len(plan.strip()) < 200:
-                return False, "PLAN.md missing or too short"
+                return False, "no hand-back" if not text.strip() else "PLAN.md missing or too short"
             if "done-test" not in plan.lower() and "done test" not in plan.lower():
                 return False, "PLAN.md has no done-test lines"
             return True, ""
+        if not text.strip():
+            return False, "no hand-back"
         if stage == "prototype":
             runs = field(text, "RUNS").lower()
             if not runs.startswith("yes"):

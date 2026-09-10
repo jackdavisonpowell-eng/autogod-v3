@@ -23,6 +23,12 @@ How to work:
   with `python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:PORT/').status)"`,
   then kill the server.
 - Never claim RUNS: yes without real output pasted below. A wrong yes wastes a night.
+- The moment the one-thing command has produced its real output, write the hand-back and
+  stop. Do not add tests the plan did not ask for, do not refactor, do not re-verify, do not
+  tidy. Hand back FIRST; anything after it is wasted and the budget kills the session.
+- If a tool call or command is refused by the sandbox, try it once a different way (a file
+  instead of an inline `-e`), then note it under `could not` and move on. Never touch
+  `.claude/` or the hooks.
 
 Before you stop, write the hand-back file {{handback_path}}:
 

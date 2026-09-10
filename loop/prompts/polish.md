@@ -39,4 +39,6 @@ CARD:
 ```
 NEXT: showcase
 
-`runs` must be honest. Then stop.
+`runs` must be honest. Write the hand-back the moment step 7 is done — or the moment
+you have spent more than a few turns on any one step; skip it, note it under `could not`.
+If a tool call is refused, skip that step; never edit `.claude/` or the hooks. Then stop.
