@@ -131,6 +131,9 @@ def main(argv=None):
     if not proj:
         print("no such project: %s" % slug); return 1
     card = st.read_card(slug) or {}
+    if proj.get("verdict") == "kill":
+        # 00:35 09-10: three killed apps went live by hand — never again
+        print("%s was killed on the wall; not publishing" % slug); return 1
     url = publish(st, proj, card)
     card["site"] = url
     st.write_card(slug, card)
