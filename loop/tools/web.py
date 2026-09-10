@@ -57,7 +57,7 @@ def search(q, n=8):
     url = "https://html.duckduckgo.com/html/?" + urllib.parse.urlencode({"q": q})
     doc, _ = _get(url)
     out = []
-    for m in re.finditer(r'(?s)<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>(.*?)(?=<div class="result|$)', doc):
+    for m in re.finditer(r'(?s)<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>(.*?)(?=<div class="result results|$)', doc):
         href, title, rest = m.group(1), m.group(2), m.group(3)
         # DDG wraps links: //duckduckgo.com/l/?uddg=<url>&rut=...
         u = urllib.parse.urlparse(href if "://" in href else "https:" + href)
