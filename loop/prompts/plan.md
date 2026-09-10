@@ -30,9 +30,16 @@ left to make:
    - `done-test:` a COMMAND with the expected output, e.g. `python3 -c "..."`, `node -e "..."`,
      `grep -c 'id=\"canvas\"' index.html` → `1`. Something a script can run, not "looks right".
 5. **The one thing** — the single behaviour that must work for the prototype to count as
-   RUNS: yes, and the exact command + expected output that proves it.
+   RUNS: yes, and the exact command + expected output that proves it. It must be something
+   the OBVIOUS version of this app does not do: a diff viewer that only marks whole lines,
+   a habit tracker that is a grid of squares, a timer that counts down — those are the
+   obvious versions and nobody opens them twice. Say in one line what the obvious version
+   is and what this one does that it doesn't.
+6. **After the one thing** — up to 3 features, one line each, most valuable first, that
+   the polish session may add once the one thing is proven. Concrete, not "make it nicer".
 
-Keep PLAN.md under 120 lines. No features past the one thing. You may read {{code_dir}}
+Keep PLAN.md under 120 lines. The prototype builds the one thing only; polish adds from
+section 6. You may read {{code_dir}}
 (it is empty or has only CLAUDE.md). There is no web tool; use formulas and APIs you already know.
 
 The INSTANT PLAN.md is written, write the hand-back file {{handback_path}} with this shape
