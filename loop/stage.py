@@ -23,6 +23,7 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 from goal import State, SLUG_RE, now, today  # noqa: E402
+import publish  # noqa: E402
 
 ROOT = os.path.realpath(os.environ.get("AUTOGOD_ROOT", os.path.join(HERE, "..")))
 STATE_DIR = os.environ.get("AUTOGOD_STATE_DIR", os.path.join(ROOT, "state"))
@@ -271,6 +272,7 @@ class Pass:
             if NEXT[stage] == "showcase":
                 proj["showcased"] = now()
                 self.write_showcase(proj, text)
+                self.publish_site(proj)
             self.st.write_project(proj)
             return "%s ok -> %s" % (stage, NEXT[stage])
         proj["retries"] += 1
@@ -308,6 +310,19 @@ class Pass:
                 return False, "CARD json missing or incomplete"
             return True, ""
         return False, "unknown stage"
+
+    def publish_site(self, proj):
+        """The polished app goes to autogod.org before this iteration ends (Jack, 2026-09-10).
+        Never lets a site problem fail the stage."""
+        slug = proj["slug"]
+        try:
+            card = self.st.read_card(slug) or {}
+            url = publish.publish(self.st, proj, card)
+            card["site"] = url
+            self.st.write_card(slug, card)
+            log("[%s] published %s -> %s" % (self.lane, slug, url))
+        except Exception as e:  # noqa: BLE001
+            log("[%s] publish %s FAILED: %s" % (self.lane, slug, e))
 
     def write_showcase(self, proj, text, stuck=False):
         slug = proj["slug"]

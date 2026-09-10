@@ -20,6 +20,13 @@ type-a-word toy, not coursework, not a chatbot.
 
 Do not search the web; you have no web tool. Decide from what you know.
 
+Before you commit to an idea ask: has somebody probably already made this online? A
+habit grid, a pomodoro timer, a diff viewer, a breathing pacer — yes, many times, and a
+stranger will not open the 400th one twice. If the honest answer is yes, either pick
+something else or say in one line what THIS one does that the ones online do not — a
+difference a stranger notices in ten seconds, not a colour scheme. That line goes in
+the IDEA block as `ALREADY ONLINE: <what exists> — <why this one anyway>`.
+
 Write your answer as the file {{handback_path}} with EXACTLY this shape and nothing else:
 
 SLUG: <two or three words, kebab-case, lowercase>
@@ -28,7 +35,8 @@ CATEGORY: <one lowercase word: game, tool, visualizer, tracker, generator, toy, 
 SHAPE: <one line — what it is and for whom; the line a stranger compares against>
 IDEA:
 <10–20 lines: what it is, who opens it twice and why, what it looks like on screen, the
-1–3 files it will be, the one thing that must work for it to count>
+1–3 files it will be, the one thing that must work for it to count, and the
+ALREADY ONLINE line>
 NEXT: plan
 
 Write that file, then stop. Do not create anything else.

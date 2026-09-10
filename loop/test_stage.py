@@ -59,6 +59,7 @@ class T(unittest.TestCase):
         self.vault = os.path.join(self.tmp, "vault")
         self.lab = os.path.join(self.tmp, "lab")
         stage.STATE_DIR = os.path.join(self.tmp, "state")
+        os.environ["AUTOGOD_APPS_DIR"] = os.path.join(self.tmp, "landing", "apps")
         self.st = State(self.vault, self.lab)
         with open(os.path.join(self.st.goals, "build-cool-apps.md"), "w") as f:
             f.write("---\nname: build cool apps\n---\n\nbuild cool apps\n")
@@ -93,6 +94,16 @@ class T(unittest.TestCase):
         self.assertIsNone(card["verdict"])
         self.assertEqual(card["blurb"], "A grid that pulses.")
         self.assertEqual(self.st.read_project("pulse-grid")["iterations"], 4)
+        # the polished app is on the site before the iteration ends
+        self.assertEqual(card["site"], "https://autogod.org/apps/pulse-grid/")
+        self.assertTrue(os.path.exists(os.path.join(self.tmp, "landing", "apps", "pulse-grid", "index.html")))
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "landing", "apps", "pulse-grid", "CLAUDE.md")))
+        with open(os.path.join(self.vault, "Site", "Projects", "pulse-grid.md")) as f:
+            note = f.read()
+        self.assertIn("title: Pulse Grid", note)
+        self.assertIn("status: live", note)
+        self.assertIn("href: https://autogod.org/apps/pulse-grid/", note)
+        self.assertIn("A grid that pulses.", note)
         # the prompt for prototype carried the plan and the last hand-back
         proto_prompt = [c[1] for c in drv.calls if c[0] == "prototype"][0]
         self.assertIn("done-test", proto_prompt)
@@ -198,6 +209,9 @@ class TVerdict(T):
         self.assertIn("a grid that pulses", self.st.dead_lines())
         self.assertIn("not this: a grid that pulses", self.st.active_goal()[1])
         self.assertEqual(self.st.read_card("pulse-grid")["verdict"], "kill")
+        # a kill takes the card off the site
+        with open(os.path.join(self.vault, "Site", "Projects", "pulse-grid.md")) as f:
+            self.assertIn("draft: true", f.read())
         # the next idea prompt carries the kill
         drv.script["idea"] = (IDEA.replace("pulse-grid", "tide-clock").replace("visualizer", "timer"), {})
         p.run()
@@ -209,3 +223,5 @@ class TVerdict(T):
             p.run()
         self.assertEqual(verdict.apply(self.st, "tide-clock", "keep"), "ok")
         self.assertTrue(os.path.exists(os.path.join(stage.STATE_DIR, "keep", "tide-clock")))
+        with open(os.path.join(self.vault, "Site", "Projects", "tide-clock.md")) as f:
+            self.assertIn("verdict = kept", f.read())

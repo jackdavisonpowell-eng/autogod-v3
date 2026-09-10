@@ -17,6 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 from goal import State, now  # noqa: E402
+import publish  # noqa: E402
 
 STATE_DIR = os.environ.get("AUTOGOD_STATE_DIR", os.path.join(HERE, "..", "state"))
 
@@ -38,6 +39,10 @@ def apply(st, slug, verdict, reason=""):
     card["stage"] = "verdict"
     card["decided"] = proj["decided"]
     st.write_card(slug, card)
+    try:
+        publish.set_verdict(st, slug, verdict)
+    except OSError:
+        pass
     if verdict == "kill":
         shape = proj.get("shape") or card.get("blurb") or slug
         st.append_dead(slug, shape, reason or "Jack killed it on the showcase")
