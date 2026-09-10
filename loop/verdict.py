@@ -53,6 +53,14 @@ def apply(st, slug, verdict, reason=""):
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, slug), "w") as f:
             f.write("%s %s\n" % (now(), st.code_dir(slug)))
+        try:
+            did = publish.on_keep(st, proj)
+            if did:
+                with open(os.path.join(d, slug), "a") as f:
+                    f.write(did + "\n")
+        except Exception as e:  # noqa: BLE001
+            with open(os.path.join(d, slug), "a") as f:
+                f.write("on_keep FAILED: %s\n" % e)
     return "ok"
 
 

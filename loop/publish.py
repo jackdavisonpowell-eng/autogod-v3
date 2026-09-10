@@ -22,6 +22,13 @@ sys.path.insert(0, HERE)
 from goal import State  # noqa: E402
 
 SKIP_NAMES = {".claude", "CLAUDE.md", "__pycache__", "node_modules", ".git"}
+# research and patch pages ship only what the pass rendered plus the sources; never the
+# whole working copy of somebody's repo
+SHIP = {"research": {"index.html", "REPORT.md", "NOTES.md"},
+        "patch": {"index.html", "changes.diff", "NOTES.md"}}
+KICKER = {"tinker": "built by AUTOGOD, no human in the loop",
+          "research": "researched by AUTOGOD, every claim cited",
+          "patch": "patched by AUTOGOD, waiting on the merge"}
 SITE_URL = os.environ.get("AUTOGOD_SITE_URL", "https://autogod.org")
 
 
@@ -53,6 +60,21 @@ def _body(st, slug, card):
     return "\n\n".join(paras[:2])
 
 
+HOW = {
+    "tinker": ("AUTOGOD invented it, planned it, built it until its own proof passed, polished it and "
+               "put it here — one pass per stage, nobody watching. Jack judges it afterwards on the "
+               "wall; a kill takes it down. Run it: `%s`. No dependencies."),
+    "research": ("AUTOGOD picked the question, planned the sub-questions, searched and read the web "
+                 "for itself, and wrote this up with every claim cited — one pass per stage, nobody "
+                 "watching. Jack judges it afterwards on the wall; a keep makes it a log entry. "
+                 "%.0s"),
+    "patch": ("AUTOGOD read the target (%s), chose one change it would stand behind, made it on a "
+              "branch in its sandbox, proved it with a command and wrote the merge note. Jack "
+              "judges the diff on the wall; a keep hands the patch to the repo, a kill leaves "
+              "the target untouched."),
+}
+
+
 def publish(st, proj, card):
     """Copy the app + write the note. Returns the public URL."""
     slug = proj["slug"]
@@ -61,7 +83,14 @@ def publish(st, proj, card):
     os.makedirs(apps_dir(), exist_ok=True)
     if os.path.isdir(dst):
         shutil.rmtree(dst)
-    shutil.copytree(src, dst, ignore=_ignore)
+    kind = proj.get("kind") or "tinker"
+    if kind in SHIP:
+        os.makedirs(dst)
+        for name in SHIP[kind]:
+            if os.path.exists(os.path.join(src, name)):
+                shutil.copy(os.path.join(src, name), dst)
+    else:
+        shutil.copytree(src, dst, ignore=_ignore)
     url = "%s/apps/%s/" % (SITE_URL, slug)
 
     # PROJECT.md's title is the one the idea chose ("Delta"); the CARD json tends to
@@ -69,18 +98,23 @@ def publish(st, proj, card):
     title = proj.get("title") or card.get("title") or slug
     cat = card.get("category") or proj.get("category") or "app"
     mins = _minutes_since(proj.get("born"))
-    stats = ["built by = AUTOGOD", "lane = %s" % proj.get("lane", "?")]
+    stats = ["%s by = AUTOGOD" % {"research": "researched", "patch": "patched"}.get(kind, "built"),
+             "lane = %s" % proj.get("lane", "?")]
     if mins:
         stats.append("idea to live = %d min" % mins)
+    if kind == "research" and (card.get("sources") or proj.get("sources")):
+        stats.append("sources = %s" % (card.get("sources") or proj.get("sources")))
+    if kind == "patch":
+        stats.append("target = %s" % proj.get("target", "?"))
     stats.append("verdict = pending")
     run = card.get("run") or "open index.html"
     lines = [
         "---",
         "title: %s" % title,
-        "kicker: built by AUTOGOD, no human in the loop",
+        "kicker: %s" % KICKER.get(kind, KICKER["tinker"]),
         "date: %s" % time.strftime("%Y-%m-%d"),
         "status: live",
-        "tags: [autogod, %s]" % cat,
+        "tags: [autogod, %s%s]" % (cat, "" if kind == "tinker" else ", " + kind),
         "href: %s" % url,
         "stats: %s" % " | ".join(stats),
         "slug: %s" % slug,
@@ -92,9 +126,7 @@ def publish(st, proj, card):
         "",
         "## How it got here",
         "",
-        "AUTOGOD invented it, planned it, built it until its own proof passed, polished it and "
-        "put it here — one pass per stage, nobody watching. Jack judges it afterwards on the "
-        "wall; a kill takes it down. Run it: `%s`. No dependencies." % run,
+        HOW[kind] % (run if kind == "tinker" else proj.get("target", "?")),
         "",
     ]
     os.makedirs(site_projects(st), exist_ok=True)
@@ -102,6 +134,48 @@ def publish(st, proj, card):
     with open(note, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     return url
+
+
+def on_keep(st, proj):
+    """What a keep does beyond the marker: research -> blog post; patch -> the patch leaves
+    the sandbox (repo: git patches into the vault for nitro; app: applied to the kept app
+    and republished)."""
+    slug, kind = proj["slug"], proj.get("kind") or "tinker"
+    cdir = st.code_dir(slug)
+    if kind == "research":
+        report = st.read_text(os.path.join(cdir, "REPORT.md"))
+        if not report.strip():
+            return "no REPORT.md"
+        body = re.sub(r"^#\s+.*\n", "", report, count=1).lstrip()
+        blog = os.environ.get("AUTOGOD_SITE_BLOG", os.path.join(st.vault, "Site", "Blog"))
+        os.makedirs(blog, exist_ok=True)
+        with open(os.path.join(blog, "%s.md" % slug), "w", encoding="utf-8") as f:
+            f.write("---\ntitle: %s\ndate: %s\ntags: [autogod, research, %s]\n---\n\n%s\n"
+                    % (proj.get("title") or slug, time.strftime("%Y-%m-%d"),
+                       proj.get("category") or "notes", body))
+        return "blog: %s.md" % slug
+    if kind == "patch":
+        import subprocess
+        repo = os.path.join(cdir, "repo")
+        out = os.path.join(st.patches, slug)
+        os.makedirs(out, exist_ok=True)
+        base = proj.get("base") or "HEAD~1"
+        subprocess.run(["git", "format-patch", "-q", "-o", out, "%s..HEAD" % base], cwd=repo,
+                       capture_output=True, text=True, timeout=120)
+        for name in ("changes.diff", "NOTES.md"):
+            if os.path.exists(os.path.join(cdir, name)):
+                shutil.copy(os.path.join(cdir, name), out)
+        if proj.get("target_kind") == "app":
+            dst = proj.get("target_src") or ""
+            if os.path.isdir(dst):
+                shutil.copytree(repo, dst, dirs_exist_ok=True,
+                                ignore=shutil.ignore_patterns(".git", ".claude", "CLAUDE.md", "__pycache__"))
+                orig = st.read_project(proj.get("target", ""))
+                if orig:
+                    publish(st, orig, st.read_card(orig["slug"]) or {})
+                return "applied to app %s and republished; patches in %s" % (proj.get("target"), out)
+        return "patches in %s" % out
+    return ""
 
 
 def set_verdict(st, slug, verdict):

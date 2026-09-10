@@ -15,6 +15,7 @@ import time
 from simpleyaml import loads as yaml_loads
 
 LIVE_STAGES = ("plan", "prototype", "polish")
+MODES = ("tinker", "research", "patch")   # what one goal asks for; the wall's mode keys
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,40}$")
 
 
@@ -35,6 +36,9 @@ class State:
         self.projects = os.path.join(self.ag, "projects")
         self.showcase = os.path.join(self.ag, "showcase")
         self.dead = os.path.join(self.ag, "dead.md")
+        self.repos = os.path.join(self.ag, "repos.md")        # patch mode's target list
+        self.patches = os.path.join(self.ag, "patches")       # kept patches, synced to nitro
+        self.research = os.path.join(self.ag, "research")     # finished reports, for Obsidian
         for d in (self.goals, self.projects, self.showcase):
             os.makedirs(d, exist_ok=True)
         if not os.path.exists(self.dead):
@@ -99,6 +103,65 @@ class State:
         meta, body = self.read_fm(os.path.join(self.goals, pick + ".md"))
         return pick, body.strip()
 
+    def active_goal_full(self):
+        """(slug, text, mode) — mode from the goal note's frontmatter, default tinker."""
+        slug, text = self.active_goal()
+        if not slug:
+            return None, "", "tinker"
+        meta, _ = self.read_fm(os.path.join(self.goals, slug + ".md"))
+        mode = str(meta.get("mode") or "tinker").strip().lower()
+        return slug, text, mode if mode in MODES else "tinker"
+
+    def set_goal_mode(self, slug, mode):
+        if mode not in MODES:
+            raise ValueError("mode must be one of %s" % ", ".join(MODES))
+        p = os.path.join(self.goals, slug + ".md")
+        meta, body = self.read_fm(p)
+        meta = dict(meta) if meta else {"name": slug}
+        meta["mode"] = mode
+        self.write_fm(p, meta, body)
+
+    # -- patch targets ----------------------------------------------------
+    def repo_targets(self):
+        """repos.md: `- name: url` or `- url` lines -> [{name, kind: repo, src}]."""
+        out = []
+        for ln in self.read_text(self.repos).splitlines():
+            ln = ln.strip()
+            if not ln.startswith("-") or ln.startswith("- not"):
+                continue
+            ln = ln[1:].strip()
+            m = re.match(r"^([A-Za-z0-9_.-]+)\s*:\s*(\S+)$", ln)
+            if m:
+                name, src = m.group(1), m.group(2)
+            elif re.match(r"^(https?://|git@|file://|/)", ln):
+                src = ln.split()[0]
+                name = re.sub(r"\.git$", "", src.rstrip("/").rsplit("/", 1)[-1])
+            else:
+                continue
+            out.append({"name": name, "kind": "repo", "src": src})
+        return out
+
+    def app_targets(self):
+        """Every kept tinker app is fair game for patch mode ('expand app ideas')."""
+        out = []
+        for m in self.list_projects():
+            if m.get("verdict") == "keep" and (m.get("kind") or "tinker") == "tinker":
+                d = self.code_dir(m["slug"])
+                if os.path.isdir(d):
+                    out.append({"name": m["slug"], "kind": "app", "src": d,
+                                "shape": m.get("shape", "")})
+        return out
+
+    def targets(self):
+        seen, out = set(), []
+        for t in self.repo_targets() + self.app_targets():
+            if t["name"] not in seen:
+                seen.add(t["name"]); out.append(t)
+        return out
+
+    def mirror_dir(self, name):
+        return os.path.join(self.lab, "_repos", name)
+
     def append_not_this(self, goal_slug, line):
         p = os.path.join(self.goals, goal_slug + ".md")
         with open(p, "a", encoding="utf-8") as f:
@@ -160,6 +223,9 @@ class State:
             st = m.get("stage", "?")
             if m.get("verdict") in ("keep", "kill"):
                 st = m["verdict"]
+            kind = m.get("kind") or "tinker"
+            if kind != "tinker":
+                st = "%s, %s" % (kind, st)
             lines.append("- %s [%s] (%s): %s" % (m["slug"], m.get("category", "?"), st,
                                                   m.get("shape", "")))
         return "\n".join(lines) if lines else "(none yet)"
@@ -210,3 +276,26 @@ class State:
                 return json.load(f)
         except (OSError, ValueError):
             return None
+
+
+def main(argv=None):
+    """goal.py show | mode <slug> <tinker|research|patch> — what the wall's mode keys call."""
+    import sys
+    argv = list(sys.argv[1:] if argv is None else argv)
+    st = State()
+    if not argv or argv[0] == "show":
+        slug, text, mode = st.active_goal_full()
+        print(json.dumps({"slug": slug, "mode": mode, "text": text}))
+        return 0
+    if argv[0] == "mode" and len(argv) == 3:
+        try:
+            st.set_goal_mode(argv[1], argv[2])
+        except ValueError as e:
+            print(e); return 2
+        print("ok"); return 0
+    print("usage: goal.py show | mode <slug> <mode>"); return 2
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
