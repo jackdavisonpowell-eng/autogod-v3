@@ -64,7 +64,9 @@ def publish(st, proj, card):
     shutil.copytree(src, dst, ignore=_ignore)
     url = "%s/apps/%s/" % (SITE_URL, slug)
 
-    title = card.get("title") or proj.get("title") or slug
+    # PROJECT.md's title is the one the idea chose ("Delta"); the CARD json tends to
+    # come back lowercased by the 27B ("delta") — prefer the project's.
+    title = proj.get("title") or card.get("title") or slug
     cat = card.get("category") or proj.get("category") or "app"
     mins = _minutes_since(proj.get("born"))
     stats = ["built by = AUTOGOD", "lane = %s" % proj.get("lane", "?")]
